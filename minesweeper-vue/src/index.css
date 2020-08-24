@@ -1,0 +1,22 @@
+#app {
+  font-family: "Muli-Regular", Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+}
+
+body {
+  margin: 0;
+}
+
+@font-face {
+  font-family: "Muli-Regular";
+  src: url(./assets/fonts/Muli-Regular.ttf) format("truetype");
+}
+
+@font-face {
+  font-family: "Muli-Light";
+  src: url(./assets/fonts/Muli-Light.ttf) format("truetype");
+}
+
+/* addroot colors enum? */
