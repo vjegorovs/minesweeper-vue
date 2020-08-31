@@ -2,31 +2,14 @@
   <div class="view">
     <div class="settings-bar">
       <ul>
-        <li>
-          <label for="Easy">Easy</label>
+        <li v-for="(setting, index) in settingsArray" :key="index+setting">
+          <label :for="setting">{{ setting }}</label>
           <input
             type="radio"
-            id="EASY"
-            value="EASY"
-            v-model="difficultySetting"
-          />
-        </li>
-        <li>
-          <label for="Medium">Medium</label>
-          <input
-            type="radio"
-            id="MEDIUM"
-            value="MEDIUM"
-            v-model="difficultySetting"
-          />
-        </li>
-        <li>
-          <label for="Hard">Hard</label>
-          <input
-            type="radio"
-            id="HARD"
-            value="HARD"
-            v-model="difficultySetting"
+            :id="setting"
+            :value="setting"
+            v-model="globalReactiveState.difficulty"
+            :disabled="globalReactiveState.clickable ? true : false"
           />
         </li>
       </ul>
@@ -38,16 +21,21 @@
           min="5"
           max="15"
           step="1"
-          v-model.number="gridSize"
+          :disabled="globalReactiveState.clickable ? true : false"
+          v-model.number="globalReactiveState.gridSize"
         />
-        <label for="Size">Size: {{ gridSize }}</label>
+        <label
+          for="Size"
+        >Size: {{ globalReactiveState.gridSize }} x {{ globalReactiveState.gridSize }}</label>
       </div>
-      <div class="difficulty">Bombs: {{ bombCount }}</div>
-      <button class="begin-game" @click="startGame = true">
-        Start
+      <button class="begin-game" @click="startGame">
+        <span v-if="globalReactiveState.startGame && globalReactiveState.clickable">Re-</span>Start
       </button>
     </div>
-    <main-grid :board="field" />
+    <div class="game-status">
+      <div class="bombcount">💣 left: {{ bombCount - bombCounter }}</div>
+    </div>
+    <main-grid :board="field" @gameover="victoryScreen" />
   </div>
 </template>
 
@@ -57,6 +45,7 @@ import MainGrid from "./components/MainGrid.vue";
 import GridCell from "./components/GridCell.vue";
 import { Settings } from "./enums/settings";
 import { generateBoard } from "./utils/boardGenerator";
+import { fieldCell } from "./types/fieldCell";
 
 export default {
   name: "App",
@@ -65,41 +54,77 @@ export default {
     GridCell,
   },
   setup() {
-    const global = computed(() => {
-      return {
-        difficulty: difficultySetting,
-        size: gridSize,
-      };
+    const settingsArray = ["Easy", "Medium", "Hard"];
+    const globalReactiveState = reactive({
+      gridSize: 10,
+      difficulty: "Easy",
+      startGame: false,
+      clickable: false,
     });
-    const difficultySetting = ref("EASY");
-    const gridSize = ref(10);
+    provide("globalSettings", globalReactiveState);
+
     const bombCount = computed(() => {
-      const fieldsCount = gridSize.value * gridSize.value;
+      const fieldsCount =
+        globalReactiveState.gridSize * globalReactiveState.gridSize;
       const bombCount = Math.floor(
-        fieldsCount / Settings[`${difficultySetting.value}`]
+        fieldsCount /
+          Settings[`${globalReactiveState.difficulty.toUpperCase()}`]
       );
       return bombCount;
     });
-    const startGame: Ref<boolean> = ref(false);
-    provide("startGame", startGame);
-    const field: ComputedRef<(number | string)[][]> = computed(() => {
-      // visual output of field without values to be slightly faster
-      const fakeBoard: (number | string)[][] = new Array(gridSize.value)
-        .fill(0)
-        .map((e) => {
-          return [...new Array(gridSize.value).fill(0)];
-        });
 
-      return startGame.value
-        ? generateBoard(gridSize.value, bombCount.value)
-        : fakeBoard;
+    // similar for victory true/false
+    const bombCounter = computed((): number => {
+      console.log("bombcounter computed");
+      if (!globalReactiveState.startGame) return 0;
+      return field.value.reduce((accumulator, row) => {
+        return (
+          row.filter((cell) => {
+            return cell.isAlternatePressed === true;
+          }).length + accumulator
+        );
+      }, 0);
     });
 
+    const fakeBoard: fieldCell[][] = new Array(15).fill({}).map((e) => {
+      return [
+        ...new Array(15).fill(<fieldCell>{
+          value: null,
+          cellId: null,
+          isPressed: false,
+          isAlternatePressed: false,
+        }),
+      ];
+    });
+
+    const field: ComputedRef<fieldCell[][]> = computed(() => {
+      // visual output of field without values to be slightly faster
+
+      return globalReactiveState.startGame
+        ? reactive(generateBoard(globalReactiveState.gridSize, bombCount.value))
+        : fakeBoard
+            .slice(0, globalReactiveState.gridSize)
+            .map((row) => row.slice(0, globalReactiveState.gridSize));
+    });
+
+    const startGame = (): void => {
+      // very fast and easy solution to handle re-start events as well if user doesnt want to resize
+      globalReactiveState.startGame = false;
+      globalReactiveState.startGame = true;
+      globalReactiveState.clickable = true;
+    };
+
+    const victoryScreen = (gameOverCode: number): void => {
+      globalReactiveState.clickable = false;
+    };
+
     return {
-      difficultySetting,
-      gridSize,
       field,
       bombCount,
+      bombCounter,
+      victoryScreen,
+      globalReactiveState,
+      settingsArray,
       startGame,
     };
   },
@@ -107,13 +132,27 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.settings-bar {
+.view {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.settings-bar,
+.game {
   width: auto;
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
   background-color: tan;
+  > button {
+    margin-left: 2%;
+  }
+}
+
+.game-status {
+  margin: 1vh 0 1vh 0;
 }
 
 ul {

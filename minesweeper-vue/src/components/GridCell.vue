@@ -4,40 +4,27 @@
     :style="{ color: digitColor }"
     @click="mousePress($event)"
     @contextmenu.prevent="mousePress($event)"
-  >
-    {{ number }}
-  </button>
+  >{{ number }}</button>
 </template>
 
 <script lang="ts">
-import {
-  computed,
-  inject,
-  ref,
-  toRefs,
-  toRef,
-  watchEffect,
-  onUpdated,
-} from "vue";
+import { computed, inject, ref, toRefs, onRenderTriggered } from "vue";
 import { Colors } from "../enums/colors";
+import { Cell } from "../enums/cell";
 
 export default {
   name: "App",
   components: {},
   props: {
-    cellValue: [Number, String],
-    forceRevealCoordinates: Array,
-    coordinates: Array,
+    cellObject: Object,
   },
   setup(props, { emit }) {
-    const { cellValue } = toRefs(props);
-
-    const isPressed = ref(false);
-    const isAlternatePressed = ref(false);
-    const allowClick = inject("startGame", false);
-
+    const { cellObject } = toRefs(props);
+    const isPressed = computed(() =>
+      cellObject.value.isPressed === true ? true : false
+    );
     const digitColor = computed(() => {
-      switch (props.cellValue) {
+      switch (cellObject.value.value) {
         case 1:
           return Colors.GREEN;
         case 2:
@@ -50,67 +37,59 @@ export default {
           return Colors.RED;
       }
     });
-    function mousePress(e) {
-      if (!allowClick.value) return;
-      console.log("clicked");
+
+    const globalSettings = inject("globalSettings", {
+      gridSize: 10,
+      difficulty: "Easy",
+      startGame: false,
+      clickable: false,
+    });
+
+    function mousePress(e: MouseEvent): void {
+      console.log("mousePress function");
+
+      if (!globalSettings.clickable) return;
       if (e.button === 2) {
-        isAlternatePressed.value = !isAlternatePressed.value;
-      } else {
-        isPressed.value = true;
-      }
-    }
-    onUpdated(() => {
-      watcher();
-    });
-    const watcher = watchEffect(() => {
-      //console.log("trigger watch");
-
-      const { forceRevealCoordinates } = toRefs(props);
-      console.log(
-        forceRevealCoordinates.value[forceRevealCoordinates.value.length - 1]
-      );
-
-      forceRevealCoordinates.value[
-        forceRevealCoordinates.value.length - 1
-      ].forEach((e) => {
-        if (
-          !isPressed.value &&
-          e.targetY == props.coordinates[0] &&
-          e.targetX == props.coordinates[1]
-        ) {
-          mousePress({ button: 1 });
+        if (cellObject.value.isPressed === true) return;
+        if (cellObject.value.isAlternatePressed) {
+          cellObject.value.isAlternatePressed = false;
+          return;
+        } else {
+          cellObject.value.isAlternatePressed = true;
+          return;
         }
-      });
-      //   forceRevealCoordinates.value[
-      //     forceRevealCoordinates.value.length - 1
-      //   ].forEach((e) => {
-      //     if (
-      //       !isPressed.value &&
-      //       e.targetY == props.coordinates[0] &&
-      //       e.targetX == props.coordinates[1]
-      //     ) {
-      //       forceReveal();
-      //     }
-      //   });
-
-      return;
-    });
-    function forceReveal() {
-      isPressed.value = true;
-    }
-    const number = computed(() => {
-      if (!isPressed.value && isAlternatePressed.value) return "🚩";
-      if (isPressed.value) {
-        if (props.cellValue === 0) {
-          emit("zeroCell");
-        } else if (props.cellValue === "💣") {
-          emit("gameover");
-          return "💣";
-        } else return props.cellValue;
       } else {
-        return "";
+        if (cellObject.value.isAlternatePressed) {
+          cellObject.value.isAlternatePressed = false;
+        }
+        cellObject.value.isPressed = true;
       }
-    });
+    }
+
+    const number =
+      cellObject.value.value === null
+        ? ""
+        : computed(() => {
+            if (cellObject.value.isAlternatePressed) {
+              return "🚩";
+            } else if (cellObject.value.isPressed) {
+              cellObject.value.isAlternatePressed = false;
+              if (cellObject.value.value === 0) {
+                emit("zeroCell");
+              }
+              if (cellObject.value.value === "💣") {
+                emit("gameover", 0);
+              }
+              return cellObject.value.value === "💣"
+                ? "💣"
+                : cellObject.value.value === 0
+                ? ""
+                : cellObject.value.value;
+            }
+
+            return "";
+          });
+
     return { number, digitColor, isPressed, mousePress };
   },
 };
@@ -131,11 +110,9 @@ button {
   font-size: 1.5em;
 
   &:active {
-    border: 0;
     outline: none;
   }
   &:focus {
-    border: 0;
     outline: none;
   }
   &:hover {

@@ -1,32 +1,46 @@
 import { deepSpread } from "./deepSpread";
+import { fieldCell } from "../types/fieldCell";
 
 export const generateBoard = (
   boardSize: number,
   bombCount: number
-): (number | string)[][] => {
-  const board: (number | string)[] = new Array(boardSize).fill(0);
-
-  const finalBoard: (number | string)[][] = board.map((e) => {
-    return [...board];
+): fieldCell[][] => {
+  const board: fieldCell[] = new Array(boardSize).fill(<fieldCell>{
+    value: 0,
+    cellId: null,
+    isPressed: false,
+    isAlternatePressed: false,
+  });
+  const finalBoard: fieldCell[][] = board.map(() => {
+    return deepSpread(board);
   });
 
-  return bombPlacement(bombCount, finalBoard);
+  let uniqueId = 1;
+
+  const mappedFinalBoard: fieldCell[][] = finalBoard.map((row) => {
+    return row.map((cell) => {
+      cell.cellId = uniqueId++;
+      return deepSpread(cell);
+    });
+  });
+
+  return bombPlacement(bombCount, mappedFinalBoard);
 };
 
 const bombPlacement = (
   bombCount: number,
-  board: (number | string)[][]
-): (number | string)[][] => {
+  board: fieldCell[][]
+): fieldCell[][] => {
   let bombs: number = bombCount;
-  const newBoard: (number | string)[][] = deepSpread(board);
+  const newBoard: fieldCell[][] = deepSpread(board);
   const bombList: number[][] = [];
 
   while (bombs > 0) {
     const randomX: number = Math.floor(Math.random() * board.length);
     const randomY: number = Math.floor(Math.random() * board.length);
 
-    if (newBoard[randomY][randomX] !== "💣") {
-      newBoard[randomY][randomX] = "💣";
+    if (newBoard[randomY][randomX].value !== "💣") {
+      newBoard[randomY][randomX].value = "💣";
       bombList.push([randomY, randomX]);
       bombs--;
     }
@@ -36,10 +50,10 @@ const bombPlacement = (
 };
 
 const adjacentPlacement = (
-  board: (number | string)[][],
+  board: fieldCell[][],
   bombList: number[][]
-): (number | string)[][] => {
-  const newBoard: (number | string)[][] = deepSpread(board);
+): fieldCell[][] => {
+  const newBoard: fieldCell[][] = deepSpread(board);
 
   bombList.forEach((bombPosition) => {
     const [y, x] = <number[]>bombPosition;
@@ -49,8 +63,8 @@ const adjacentPlacement = (
 
       for (let localX: number = x - 1; localX < x + 2; localX++) {
         if (localX < 0 || localX > newBoard.length - 1) continue;
-        if (newBoard[localY][localX] !== "💣") {
-          newBoard[localY][localX] = newBoard[localY][localX] + 1;
+        if (newBoard[localY][localX].value !== "💣") {
+          newBoard[localY][localX].value = newBoard[localY][localX].value + 1;
         }
       }
     }
