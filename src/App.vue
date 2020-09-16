@@ -34,6 +34,7 @@
     </div>
     <div class="game-status">
       <div class="bombcount">💣 left: {{ bombCount - bombCounter }}</div>
+      <div class="victory" v-if="victoryComputer">yeah boi!</div>
     </div>
     <main-grid :board="field" @gameover="victoryScreen" />
   </div>
@@ -86,6 +87,28 @@ export default {
       }, 0);
     });
 
+    // watch changes in gridsize and difficulty and toggle startgame to false,
+    // check if startgame false and not compute the victory computer
+
+    const victoryComputer = computed((): boolean => {
+      console.log("victory ccondition");
+      if (!globalReactiveState.startGame) return false;
+      const pressedFields = field.value.reduce((accumulator, row) => {
+        return (
+          row.filter((cell) => {
+            return cell.isPressed === true;
+          }).length + accumulator
+        );
+      }, 0);
+      const fieldsLeft =
+        globalReactiveState.gridSize * globalReactiveState.gridSize -
+        pressedFields;
+      console.log(fieldsLeft);
+      console.log(fieldsLeft - bombCounter.value);
+      if (fieldsLeft - bombCounter.value === 0) victoryScreen();
+      return fieldsLeft - bombCounter.value === 0 ? true : false;
+    });
+
     const fakeBoard: fieldCell[][] = new Array(15).fill({}).map((e) => {
       return [
         ...new Array(15).fill(<fieldCell>{
@@ -114,7 +137,9 @@ export default {
       globalReactiveState.clickable = true;
     };
 
-    const victoryScreen = (gameOverCode: number): void => {
+    const victoryScreen = (gameOverCode?: number): void => {
+      // perhaps not needed if handling cell count in this component
+      //  switch to just inline trigger on event
       globalReactiveState.clickable = false;
     };
 
@@ -126,6 +151,7 @@ export default {
       globalReactiveState,
       settingsArray,
       startGame,
+      victoryComputer,
     };
   },
 };
