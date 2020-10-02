@@ -2,7 +2,7 @@
   <div class="view">
     <div class="settings-bar">
       <ul>
-        <li v-for="(setting, index) in settingsArray" :key="index+setting">
+        <li v-for="(setting, index) in settingsArray" :key="index + setting">
           <label :for="setting">{{ setting }}</label>
           <input
             type="radio"
@@ -24,12 +24,16 @@
           :disabled="globalReactiveState.clickable ? true : false"
           v-model.number="globalReactiveState.gridSize"
         />
-        <label
-          for="Size"
-        >Size: {{ globalReactiveState.gridSize }} x {{ globalReactiveState.gridSize }}</label>
+        <label for="Size"
+          >Size: {{ globalReactiveState.gridSize }} x
+          {{ globalReactiveState.gridSize }}</label
+        >
       </div>
       <button class="begin-game" @click="startGame">
-        <span v-if="globalReactiveState.startGame && globalReactiveState.clickable">Re-</span>Start
+        <span
+          v-if="globalReactiveState.startGame && globalReactiveState.clickable"
+          >Re-</span
+        >Start
       </button>
     </div>
     <div class="game-status">
@@ -45,7 +49,11 @@ import { reactive, computed, provide, ref, ComputedRef, Ref } from "vue";
 import MainGrid from "./components/MainGrid.vue";
 import GridCell from "./components/GridCell.vue";
 import { Settings } from "./enums/settings";
-import { generateBoard } from "./utils/boardGenerator";
+import {
+  generateBoard,
+  bombPlacement,
+  adjacentPlacement,
+} from "./utils/boardGenerator";
 import { fieldCell } from "./types/fieldCell";
 
 export default {
@@ -124,12 +132,24 @@ export default {
       // visual output of field without values to be slightly faster
 
       return globalReactiveState.startGame
-        ? reactive(generateBoard(globalReactiveState.gridSize, bombCount.value))
+        ? reactive(
+            generateRealMap(globalReactiveState.gridSize, bombCount.value)
+          )
         : fakeBoard
             .slice(0, globalReactiveState.gridSize)
             .map((row) => row.slice(0, globalReactiveState.gridSize));
     });
 
+    const generateRealMap = (
+      mapSize: number = globalReactiveState.gridSize,
+      bombCount: number
+    ): fieldCell[][] => {
+      const emptyMap: fieldCell[][] = generateBoard(mapSize);
+      const mapWithBombs: fieldCell[][] = adjacentPlacement(
+        ...bombPlacement(bombCount, emptyMap)
+      );
+      return mapWithBombs;
+    };
     const startGame = (): void => {
       // very fast and easy solution to handle re-start events as well if user doesnt want to resize
       globalReactiveState.startGame = false;
